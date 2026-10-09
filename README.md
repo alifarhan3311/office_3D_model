@@ -20,6 +20,10 @@ npm run preview
 
 ## Controls
 
+**Reception tour:** click **Start reception tour**. A blue visitor walks from the main gate to reception, where a purple receptionist presents three predefined questions. Click an answer to advance; the final response depends on visit purpose, department, and appointment choice. Walking can be paused/resumed, and the experience can be restarted or closed. This is a browser-local interaction and does not submit real appointments. Questions and options are editable in `src/tour.js`; the original office GLB is retained, with lightweight animated characters added in the viewer.
+
+The visitor follows a measured route around the lounge furniture. Browser verification checks each route segment against the actual sofa, coffee table, lounge chair, and reception desk bounds with 0.32 model units of body clearance. Movement is distance-based, with acceleration, slowing before arrival, gradual turns, and steps tied to distance traveled. The visitor stops outside the counter and turns toward the receptionist. This route is designed for this office layout; furniture/layout changes require updating and rechecking the waypoints.
+
 | Action | Input |
 | --- | --- |
 | Orbit 360° | Left mouse drag / one-finger drag |

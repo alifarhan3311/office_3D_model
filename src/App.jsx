@@ -1,6 +1,8 @@
 import { Component, useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, Box, Camera, Check, ChevronDown, ChevronRight, CircleHelp, Download, Expand, Grid2X2, Layers3, LoaderCircle, Maximize2, Minus, Mouse, PanelRightClose, PanelRightOpen, Pause, Play, Plus, RotateCcw, Rotate3D, Settings2, ShieldCheck, X } from 'lucide-react'
 import Viewer, { clearModelCache, LoadingOverlay, MODEL_URL } from './Viewer'
+import { TourDialog } from './Tour.jsx'
+import { TOUR_QUESTIONS } from './tour'
 
 class SceneBoundary extends Component {
   state = { error: null }
@@ -30,11 +32,20 @@ export default function App() {
   const [camera, setCamera] = useState(null)
   const [focusMode, setFocusMode] = useState(false)
   const [exposure, setExposure] = useState(0.9)
+  const [tourStage, setTourStage] = useState('idle')
+  const [tourRun, setTourRun] = useState(0)
+  const [tourPaused, setTourPaused] = useState(false)
+  const [tourQuestion, setTourQuestion] = useState(0)
+  const [tourAnswers, setTourAnswers] = useState({})
   const viewport = useRef()
   const helpClose = useRef()
   const fail = useCallback(error => setError(error), [])
   const onClips = useCallback(names => { setClips(names); setAnimation(current => current || names[0] || '') }, [])
   const act = useCallback(type => setCommand({ type, id: performance.now() }), [])
+  const startTour = () => { setAutoRotate(false); setTourStage('walking'); setTourRun(n=>n+1); setTourPaused(false); setTourQuestion(0); setTourAnswers({}); act('tour-focus') }
+  const endTour = () => { setTourStage('idle'); act('reset') }
+  const onTourArrive = useCallback(() => setTourStage(current => current === 'walking' ? 'questions' : current), [])
+  const answerTour = (id, value) => { setTourAnswers(current=>({...current,[id]:value})); if (tourQuestion + 1 === TOUR_QUESTIONS.length) setTourStage('complete'); else setTourQuestion(n=>n+1) }
   const fullscreen = useCallback(async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen()
@@ -69,8 +80,9 @@ export default function App() {
       <div className={`viewer-layout ${focusMode ? 'focus-mode' : ''}`}>
         <section ref={viewport} className={`viewport ${full ? 'fullscreen-view' : ''}`} aria-label="Interactive office model viewer" data-ready={ready} data-camera-distance={camera?.distance?.toFixed(3)} data-camera-position={camera?.position?.map(v => v.toFixed(3)).join(',')}>
           <div className="viewport-top"><span className="scene-tag"><span className={ready ? 'status-dot' : 'status-dot pending'}/>{error ? 'Scene unavailable' : ready ? 'Live 3D scene' : 'Loading scene'}</span><div className="viewport-actions"><span className="viewport-filename">office plan.glb</span><IconButton label="Save PNG screenshot" icon={Camera} disabled={!ready} onClick={() => act('snapshot')}/><IconButton label={focusMode ? 'Show model settings' : 'Expand workspace'} icon={focusMode ? PanelRightOpen : PanelRightClose} active={focusMode} onClick={() => setFocusMode(current => !current)}/></div></div>
-          <nav className="camera-presets" aria-label="Camera views">{[['perspective', '3D'], ['top', 'Top'], ['front', 'Front'], ['side', 'Side']].map(([key, label]) => <button key={key} disabled={!ready} aria-label={`${label} camera view`} aria-pressed={view === key} onClick={() => { setAutoRotate(false); setView(key); act('reset') }}>{label}</button>)}</nav>
-          <SceneBoundary key={attempt} onFailure={fail}><Viewer info={info} onReady={setInfo} onClips={onClips} animation={animation} playing={playing} quality={quality} autoRotate={autoRotate} grid={grid} view={view} command={command} onCamera={setCamera} onFailure={fail} exposure={exposure}/></SceneBoundary>
+          <button className="start-tour" disabled={!ready} onClick={startTour}>Start reception tour</button><nav className="camera-presets" aria-label="Camera views">{[['perspective', '3D'], ['top', 'Top'], ['front', 'Front'], ['side', 'Side']].map(([key, label]) => <button key={key} disabled={!ready} aria-label={`${label} camera view`} aria-pressed={view === key} onClick={() => { setAutoRotate(false); setView(key); act('reset') }}>{label}</button>)}</nav>
+          <SceneBoundary key={attempt} onFailure={fail}><Viewer info={info} onReady={setInfo} onClips={onClips} animation={animation} playing={playing} quality={quality} autoRotate={autoRotate} grid={grid} view={view} command={command} onCamera={setCamera} onFailure={fail} exposure={exposure} tourStage={tourStage} tourPaused={tourPaused} tourRun={tourRun} onTourArrive={onTourArrive}/></SceneBoundary>
+          {ready && <TourDialog stage={tourStage} paused={tourPaused} question={tourQuestion} answers={tourAnswers} onAnswer={answerTour} onClose={endTour} onRestart={startTour} onPause={()=>setTourPaused(current=>!current)}/>}
           {!error && <LoadingOverlay ready={ready}/>}
           {error && <div className="error-overlay"><div className="error-card"><Box size={30}/><h2>We couldn’t open the scene</h2><p>{error.message?.includes('fetch') || error.message?.includes('load') ? 'The model could not be downloaded. Check your connection and try again.' : error.message}</p><button onClick={() => { clearModelCache(); setError(null); setInfo(null); setAttempt(n => n + 1) }}>Retry viewer</button><a href={MODEL_URL} download>Download the original file</a></div></div>}
           <div className="orientation" aria-hidden="true"><span className="axis-y">Y</span><span className="axis-x">X</span><span className="axis-z">Z</span><span className="axis-origin"/></div>

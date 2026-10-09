@@ -1,0 +1,27 @@
+import { test, expect } from '@playwright/test'
+
+test('visitor enters office, answers reception questions and can restart', async ({ page }) => {
+  const errors=[]
+  page.on('pageerror', error=>errors.push(error.message))
+  await page.goto('/')
+  await expect(page.locator('.viewport')).toHaveAttribute('data-ready','true')
+  await page.getByLabel('Render quality').selectOption('balanced')
+  await page.getByRole('button',{name:'Start reception tour'}).click()
+  await expect(page.getByText('Visitor', {exact:true})).toBeVisible()
+  await expect(page.getByText('Receptionist', {exact:true})).toBeVisible()
+  await page.getByRole('button',{name:'Pause walk'}).click()
+  await page.waitForTimeout(1000)
+  await expect(page.getByRole('button',{name:'Resume walk'})).toBeVisible()
+  await page.getByRole('button',{name:'Resume walk'}).click()
+  await expect(page.getByText('Welcome! Aap kis liye aaye hain?')).toBeVisible({timeout:30000})
+  await page.getByRole('button',{name:'Meeting',exact:true}).click()
+  await page.getByRole('button',{name:'HR',exact:true}).click()
+  await page.getByRole('button',{name:'Haan, booked hai',exact:true}).click()
+  await expect(page.getByText('HR ke saath aapki meeting request note kar li hai. Reception par wait kijiye.')).toBeVisible()
+  await page.screenshot({path:'test-results/reception-tour.png',fullPage:true})
+  await page.getByRole('button',{name:'Restart reception tour'}).click()
+  await expect(page.getByRole('button',{name:'Pause walk'})).toBeVisible()
+  await page.getByRole('button',{name:'End reception tour'}).click()
+  await expect(page.getByRole('region',{name:'Reception tour'})).toBeHidden()
+  expect(errors).toEqual([])
+})

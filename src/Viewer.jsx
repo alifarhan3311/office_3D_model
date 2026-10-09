@@ -4,6 +4,7 @@ import { Environment, Lightformer, OrbitControls, useAnimations, useGLTF, usePro
 import { ACESFilmicToneMapping, Vector3, TOUCH, PCFSoftShadowMap } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { fitBoxDistance, inspectModel, VIEW_DIRECTIONS } from './model'
+import { TourActors } from './Tour.jsx'
 
 export const MODEL_URL = '/models/office-plan.glb'
 export function clearModelCache() { useGLTF.clear(MODEL_URL) }
@@ -65,6 +66,11 @@ function CameraRig({ info, command, autoRotate, view, onCamera }) {
   useEffect(() => {
     if (!info || !command) return
     if (command.type === 'reset') move(VIEW_DIRECTIONS[view])
+    if (command.type === 'tour-focus') {
+      const target = new Vector3(-25.2, 1.1, 4).sub(new Vector3(...info.center))
+      transition.current = { from: camera.position.clone(), to: target.clone().add(new Vector3(7, 10, 12)), targetFrom: controls.current.target.clone(), targetTo: target, start: performance.now() }
+      invalidate()
+    }
     if (command.type === 'in' || command.type === 'out') {
       const target = controls.current.target
       const delta = camera.position.clone().sub(target)
@@ -166,6 +172,7 @@ export default function Viewer(props) {
     <CameraRig {...props}/>
     <RenderSettings exposure={props.exposure}/>
     <Screenshot command={props.command}/>
+    {props.info && props.tourStage !== 'idle' && <TourActors key={props.tourRun} info={props.info} stage={props.tourStage} paused={props.tourPaused} onArrive={props.onTourArrive}/>}
     <AnimationFrames active={Boolean(props.animation) && props.playing}/>
     <ContextGuard onFailure={props.onFailure}/>
   </Canvas>
