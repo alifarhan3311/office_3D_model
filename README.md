@@ -23,7 +23,7 @@ npm run preview
 | Action | Input |
 | --- | --- |
 | Orbit 360° | Left mouse drag / one-finger drag |
-| Zoom | Wheel / pinch / toolbar + and − |
+| Zoom | Wheel zooms toward the cursor; pinch / toolbar + and − also supported |
 | Pan | Right mouse drag / two-finger drag |
 | Reset | Toolbar reset / R |
 | Fullscreen | Toolbar fullscreen / Esc to exit |

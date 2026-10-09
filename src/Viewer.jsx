@@ -94,7 +94,7 @@ function CameraRig({ info, command, autoRotate, view, onCamera }) {
       onCamera({ position: camera.position.toArray(), distance: controls.current ? camera.position.distanceTo(controls.current.target) : 0 })
     }
   })
-  return <OrbitControls ref={controls} makeDefault enableDamping dampingFactor={0.08} autoRotate={autoRotate && !transition.current} autoRotateSpeed={0.55} minDistance={info ? info.radius * 0.08 : 0.1} maxDistance={info ? info.radius * 12 : 500} maxPolarAngle={Math.PI / 2 - 0.015} touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }} onStart={() => { transition.current = null; controls.current.enableDamping = true }} />
+  return <OrbitControls ref={controls} makeDefault zoomToCursor enableDamping dampingFactor={0.08} autoRotate={autoRotate && !transition.current} autoRotateSpeed={0.55} minDistance={info ? info.radius * 0.08 : 0.1} maxDistance={info ? info.radius * 12 : 500} maxPolarAngle={Math.PI / 2 - 0.015} touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }} onStart={() => { transition.current = null; controls.current.enableDamping = true }} />
 }
 
 function RenderSettings({ exposure }) {
