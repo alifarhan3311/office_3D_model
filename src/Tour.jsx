@@ -2,10 +2,11 @@ import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import Character from './HumanCharacter.jsx'
+import GuidedTour from './GuidedTour.jsx'
 import { Vector3, Quaternion, MathUtils } from 'three'
 import { VISITOR_PATH, VISITOR_SPEED, PATH_LENGTH, sampleVisitorPath, RECEPTIONIST_POSITION, TOUR_QUESTIONS, receptionResponse } from './tour'
 
-export function TourActors({ info, stage, paused, onArrive, receptionState }) {
+export function TourActors({ info, stage, paused, onArrive, receptionState, onGuideStop, onGuideComplete }) {
   const visitor = useRef()
   const elapsed = useRef(0)
   const arrived = useRef(false)
@@ -43,14 +44,17 @@ export function TourActors({ info, stage, paused, onArrive, receptionState }) {
     }
     if (!paused) invalidate()
   })
+  if (stage === 'guiding' || stage === 'guided-complete') return <GuidedTour info={info} paused={paused} onStop={onGuideStop} onComplete={onGuideComplete}/>
   return <>
     <group ref={visitor} position={VISITOR_PATH[0].map((v,i)=>v-info.center[i])}><Character shirt="#365a79" moving={stage === 'walking' && !paused} gait={gait}/><Html center position={[0,1.95,0]} style={{pointerEvents:'none'}}><span className="character-label">Visitor</span></Html></group>
     <group position={RECEPTIONIST_POSITION.map((v,i)=>v-info.center[i])}><Html center position={[0,1.95,0]} style={{pointerEvents:'none'}}><span className="character-label">Receptionist</span></Html></group>
   </>
 }
 
-export function TourDialog({ stage, paused, question, answers, onAnswer, onClose, onRestart, onPause }) {
+export function TourDialog({ stage, paused, question, answers, onAnswer, onClose, onRestart, onPause, guideStop }) {
   if (stage === 'idle') return null
+  if (stage === 'walking') return <div className="tour-walk-controls"><span>Walking to reception</span><button className="tour-secondary" onClick={onPause}>{paused ? 'Resume walk' : 'Pause walk'}</button><button className="tour-secondary" onClick={onClose} aria-label="End reception tour">End tour</button></div>
+  if (stage === 'guiding' || stage === 'guided-complete') return <section className="tour-dialog" aria-label="Guided office tour" aria-live="polite"><div className="tour-dialog-heading"><span>GUIDED OFFICE TOUR</span><button onClick={onClose} aria-label="End reception tour">×</button></div><span className="question-progress">Stop {guideStop?.index ?? 0} / {guideStop?.total ?? 7}</span><h3>{stage === 'guided-complete' ? 'Office tour complete' : guideStop?.name}</h3><p>{guideStop?.description}</p>{stage === 'guiding' ? <button className="tour-secondary" onClick={onPause}>{paused ? 'Resume tour' : 'Pause tour'}</button> : <button className="tour-secondary" onClick={onRestart}>Restart reception tour</button>}</section>
   const current = TOUR_QUESTIONS[question]
   return <section className="tour-dialog" aria-label="Reception tour" aria-live="polite">
     <div className="tour-dialog-heading"><span>{stage === 'walking' ? 'GATE → RECEPTION' : 'RECEPTION DESK'}</span><button onClick={onClose} aria-label="End reception tour">×</button></div>

@@ -1,20 +1,32 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Lightformer, OrbitControls, useAnimations, useGLTF, useProgress } from '@react-three/drei'
-import { ACESFilmicToneMapping, Box3, Vector3, TOUCH, PCFSoftShadowMap } from 'three'
+import { ACESFilmicToneMapping, Box3, Plane, Vector3, TOUCH, PCFSoftShadowMap } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { fitBoxDistance, inspectModel, VIEW_DIRECTIONS } from './model'
 import { TourActors } from './Tour.jsx'
 import HumanCharacter from './HumanCharacter.jsx'
+import { buildOfficeTour, RECEPTION_EXIT_X } from './officeTour'
+import { enhanceInteriorMaterials } from './interiorMaterials'
+import Washrooms from './Washrooms.jsx'
 
 export const PERSON_MESH_NAMES = ['Object_2', 'Object_2001', 'Object_2002', 'Object_2004']
 
 export const MODEL_URL = '/models/office-plan.glb'
 export function clearModelCache() { useGLTF.clear(MODEL_URL) }
 
-function Office({ onReady, onClips, animation, playing, shadows, receptionState }) {
+function Office({ onReady, onClips, animation, playing, shadows, receptionState, tourStage }) {
   const gltf = useGLTF(MODEL_URL)
-  const scene = useMemo(() => clone(gltf.scene), [gltf.scene])
+  const scene = useMemo(() => {const copy=clone(gltf.scene);enhanceInteriorMaterials(copy);return copy}, [gltf.scene])
+  useMemo(() => {
+    const desk=scene.getObjectByName('RECEPTION_DESK')
+    const sceneCenter=new Box3().setFromObject(scene).getCenter(new Vector3())
+    desk?.traverse(object=>{
+      if(!object.isMesh)return
+      const apply=source=>{const material=source.clone();material.clippingPlanes=[new Plane(new Vector3(-1,0,0),RECEPTION_EXIT_X-sceneCenter.x)];material.clipShadows=true;return material}
+      object.material=Array.isArray(object.material)?object.material.map(apply):apply(object.material)
+    })
+  },[scene])
   const info = useMemo(() => inspectModel(scene, gltf.animations), [scene, gltf.animations])
   const people = useMemo(() => {
     scene.updateMatrixWorld(true)
@@ -27,9 +39,10 @@ function Office({ onReady, onClips, animation, playing, shadows, receptionState 
       return { name, position: [center.x, Math.max(0, bounds.min.y), center.z], heading: [Math.PI / 2, 0, 0, -.65][index], shirt: ['#487c6c', '#76526e', '#365a79', '#996944'][index] }
     })
   }, [scene])
+  const readyInfo = useMemo(() => ({...info, officeTour:buildOfficeTour(scene)}), [info, scene, people])
   const { actions, names } = useAnimations(gltf.animations, scene)
   const { gl, invalidate } = useThree()
-  useEffect(() => { onReady(info); onClips(names) }, [info, names, onReady, onClips])
+  useEffect(() => { onReady(readyInfo); onClips(names) }, [readyInfo, names, onReady, onClips])
   useEffect(() => {
     scene.traverse(object => {
       if (!object.isMesh) return
@@ -56,7 +69,7 @@ function Office({ onReady, onClips, animation, playing, shadows, receptionState 
     return () => { action.fadeOut(0.2); action.stop() }
   }, [actions, animation])
   useEffect(() => { if (actions[animation]) actions[animation].paused = !playing }, [actions, animation, playing])
-  return <group position={info.center.map(value => -value)}><primitive object={scene} dispose={null}/>{people.map((person,index)=><group key={person.name} position={person.position} rotation={[0,person.heading,0]}><HumanCharacter shirt={person.shirt} receptionist={index === 1} receptionState={index === 1 ? receptionState : undefined} phase={index}/></group>)}</group>
+  return <group position={info.center.map(value => -value)}><primitive object={scene} dispose={null}/>{people.map((person,index)=><group key={person.name} visible={index !== 1 || !['guiding','guided-complete'].includes(tourStage)} position={person.position} rotation={[0,person.heading,0]}><HumanCharacter shirt={person.shirt} receptionist={index === 1} receptionState={index === 1 ? receptionState : undefined} phase={index}/></group>)}</group>
 }
 
 function CameraRig({ info, command, autoRotate, view, onCamera }) {
@@ -172,7 +185,7 @@ export default function Viewer(props) {
   if (props.tourStage === 'idle') receptionState.current.standing = false
   const [dpr] = useState(() => Math.min(window.devicePixelRatio || 1, 2))
   const shadows = props.quality === 'high'
-  return <Canvas frameloop="demand" shadows={shadows ? PCFSoftShadowMap : false} dpr={props.quality === 'high' ? dpr : 1} camera={{ position: [30, 30, 40], fov: 42, near: 0.15, far: 600 }} gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: ACESFilmicToneMapping }} fallback={<WebGLFallback onFailure={props.onFailure}/>} onCreated={({ gl }) => { gl.setClearColor('#eceee8'); gl.toneMappingExposure = 0.9 }}>
+  return <Canvas frameloop="demand" shadows={shadows ? PCFSoftShadowMap : false} dpr={props.quality === 'high' ? dpr : 1} camera={{ position: [30, 30, 40], fov: 42, near: 0.15, far: 600 }} gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: ACESFilmicToneMapping }} fallback={<WebGLFallback onFailure={props.onFailure}/>} onCreated={({ gl }) => { gl.localClippingEnabled = true; gl.setClearColor('#eceee8'); gl.toneMappingExposure = 0.9 }}>
     <ambientLight intensity={0.25}/>
     <hemisphereLight args={['#ffffff', '#b6bda8', 0.7]}/>
     <directionalLight position={[15, 28, 12]} intensity={1.8} castShadow={shadows} shadow-mapSize={[2048, 2048]} shadow-camera-left={-22} shadow-camera-right={22} shadow-camera-top={22} shadow-camera-bottom={-22} shadow-camera-near={1} shadow-camera-far={65} shadow-bias={-0.00015} shadow-normalBias={0.025}/>
@@ -183,14 +196,16 @@ export default function Viewer(props) {
         <Lightformer form="rect" intensity={0.8} position={[16, 5, 0]} rotation={[0, -Math.PI / 2, 0]} scale={[20, 10, 1]}/>
       </Environment>
       <Office {...props} shadows={shadows} receptionState={receptionState}/>
+      {props.info && <Washrooms center={props.info.center}/>}
     </Suspense>
     {props.info && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -props.info.size[1] / 2 - 0.035, 0]} receiveShadow><planeGeometry args={[160, 160]}/><shadowMaterial transparent opacity={0.16}/></mesh>}
     {props.grid && props.info && <gridHelper args={[80, 40, '#c2c9bd', '#dce0d6']} position={[0, -props.info.size[1] / 2 - 0.05, 0]}/>}
     <CameraRig {...props}/>
     <RenderSettings exposure={props.exposure}/>
     <Screenshot command={props.command}/>
-    {props.info && props.tourStage !== 'idle' && <TourActors key={props.tourRun} info={props.info} stage={props.tourStage} paused={props.tourPaused} onArrive={props.onTourArrive} receptionState={receptionState}/>}
+    {props.info && props.tourStage !== 'idle' && <TourActors key={props.tourRun} info={props.info} stage={props.tourStage} paused={props.tourPaused} onArrive={props.onTourArrive} receptionState={receptionState} onGuideStop={props.onGuideStop} onGuideComplete={props.onGuideComplete}/>}
     <AnimationFrames active={Boolean(props.animation) && props.playing}/>
     <ContextGuard onFailure={props.onFailure}/>
   </Canvas>
 }
+
