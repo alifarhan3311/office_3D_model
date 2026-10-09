@@ -1,18 +1,32 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, Lightformer, OrbitControls, useAnimations, useGLTF, useProgress } from '@react-three/drei'
-import { ACESFilmicToneMapping, Vector3, TOUCH, PCFSoftShadowMap } from 'three'
+import { ACESFilmicToneMapping, Box3, Vector3, TOUCH, PCFSoftShadowMap } from 'three'
 import { clone } from 'three/addons/utils/SkeletonUtils.js'
 import { fitBoxDistance, inspectModel, VIEW_DIRECTIONS } from './model'
 import { TourActors } from './Tour.jsx'
+import HumanCharacter from './HumanCharacter.jsx'
+
+export const PERSON_MESH_NAMES = ['Object_2', 'Object_2001', 'Object_2002', 'Object_2004']
 
 export const MODEL_URL = '/models/office-plan.glb'
 export function clearModelCache() { useGLTF.clear(MODEL_URL) }
 
-function Office({ onReady, onClips, animation, playing, shadows }) {
+function Office({ onReady, onClips, animation, playing, shadows, receptionState }) {
   const gltf = useGLTF(MODEL_URL)
   const scene = useMemo(() => clone(gltf.scene), [gltf.scene])
   const info = useMemo(() => inspectModel(scene, gltf.animations), [scene, gltf.animations])
+  const people = useMemo(() => {
+    scene.updateMatrixWorld(true)
+    return PERSON_MESH_NAMES.map((name, index) => {
+      const original = scene.getObjectByName(name)
+      if (!original?.isMesh) throw new Error(`Original office person missing: ${name}`)
+      const bounds = new Box3().setFromObject(original)
+      const center = bounds.getCenter(new Vector3())
+      original.visible = false
+      return { name, position: [center.x, Math.max(0, bounds.min.y), center.z], heading: [Math.PI / 2, 0, 0, -.65][index], shirt: ['#487c6c', '#76526e', '#365a79', '#996944'][index] }
+    })
+  }, [scene])
   const { actions, names } = useAnimations(gltf.animations, scene)
   const { gl, invalidate } = useThree()
   useEffect(() => { onReady(info); onClips(names) }, [info, names, onReady, onClips])
@@ -42,7 +56,7 @@ function Office({ onReady, onClips, animation, playing, shadows }) {
     return () => { action.fadeOut(0.2); action.stop() }
   }, [actions, animation])
   useEffect(() => { if (actions[animation]) actions[animation].paused = !playing }, [actions, animation, playing])
-  return <group position={info.center.map(value => -value)}><primitive object={scene} dispose={null} /></group>
+  return <group position={info.center.map(value => -value)}><primitive object={scene} dispose={null}/>{people.map((person,index)=><group key={person.name} position={person.position} rotation={[0,person.heading,0]}><HumanCharacter shirt={person.shirt} receptionist={index === 1} receptionState={index === 1 ? receptionState : undefined} phase={index}/></group>)}</group>
 }
 
 function CameraRig({ info, command, autoRotate, view, onCamera }) {
@@ -153,6 +167,9 @@ export function LoadingOverlay({ ready }) {
 }
 
 export default function Viewer(props) {
+  const receptionState = useRef({standing:false,paused:false})
+  receptionState.current.paused = props.tourPaused && props.tourStage === 'walking'
+  if (props.tourStage === 'idle') receptionState.current.standing = false
   const [dpr] = useState(() => Math.min(window.devicePixelRatio || 1, 2))
   const shadows = props.quality === 'high'
   return <Canvas frameloop="demand" shadows={shadows ? PCFSoftShadowMap : false} dpr={props.quality === 'high' ? dpr : 1} camera={{ position: [30, 30, 40], fov: 42, near: 0.15, far: 600 }} gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: ACESFilmicToneMapping }} fallback={<WebGLFallback onFailure={props.onFailure}/>} onCreated={({ gl }) => { gl.setClearColor('#eceee8'); gl.toneMappingExposure = 0.9 }}>
@@ -165,14 +182,14 @@ export default function Viewer(props) {
         <Lightformer form="rect" intensity={1} position={[-16, 5, 0]} rotation={[0, Math.PI / 2, 0]} scale={[20, 10, 1]}/>
         <Lightformer form="rect" intensity={0.8} position={[16, 5, 0]} rotation={[0, -Math.PI / 2, 0]} scale={[20, 10, 1]}/>
       </Environment>
-      <Office {...props} shadows={shadows}/>
+      <Office {...props} shadows={shadows} receptionState={receptionState}/>
     </Suspense>
     {props.info && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -props.info.size[1] / 2 - 0.035, 0]} receiveShadow><planeGeometry args={[160, 160]}/><shadowMaterial transparent opacity={0.16}/></mesh>}
     {props.grid && props.info && <gridHelper args={[80, 40, '#c2c9bd', '#dce0d6']} position={[0, -props.info.size[1] / 2 - 0.05, 0]}/>}
     <CameraRig {...props}/>
     <RenderSettings exposure={props.exposure}/>
     <Screenshot command={props.command}/>
-    {props.info && props.tourStage !== 'idle' && <TourActors key={props.tourRun} info={props.info} stage={props.tourStage} paused={props.tourPaused} onArrive={props.onTourArrive}/>}
+    {props.info && props.tourStage !== 'idle' && <TourActors key={props.tourRun} info={props.info} stage={props.tourStage} paused={props.tourPaused} onArrive={props.onTourArrive} receptionState={receptionState}/>}
     <AnimationFrames active={Boolean(props.animation) && props.playing}/>
     <ContextGuard onFailure={props.onFailure}/>
   </Canvas>

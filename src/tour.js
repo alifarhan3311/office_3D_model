@@ -19,14 +19,14 @@ export function sampleVisitorPath(distance) {
     remaining-=length
   }
 }
-export const RECEPTIONIST_POSITION = [-25.5, 0.12, 0.1]
+export const RECEPTIONIST_POSITION = [-24.530819192528725, 0, 0.3404424447130704]
 export const TOUR_QUESTIONS = [
-  { id: 'purpose', text: 'Welcome! Aap kis liye aaye hain?', options: ['Meeting', 'Interview', 'Office tour'] },
-  { id: 'department', text: 'Aap kis department se milna chahte hain?', options: ['HR', 'Management', 'Engineering'] },
-  { id: 'appointment', text: 'Kya aapki appointment booked hai?', options: ['Haan, booked hai', 'Nahi, walk-in hoon'] },
+  { id: 'purpose', text: 'Welcome! What brings you here today?', options: ['Meeting', 'Interview', 'Office tour'] },
+  { id: 'department', text: 'Which department would you like to visit?', options: ['HR', 'Management', 'Engineering'] },
+  { id: 'appointment', text: 'Do you have an appointment?', options: ['Yes, I have an appointment', 'No, I am a walk-in visitor'] },
 ]
 export function receptionResponse(answers) {
-  if (answers.purpose === 'Office tour') return 'Welcome! Aap office explore kar sakte hain. Camera controls se rooms dekhiye.'
-  if (answers.appointment === 'Haan, booked hai') return `${answers.department} ke saath aapki ${answers.purpose.toLowerCase()} request note kar li hai. Reception par wait kijiye.`
-  return `${answers.department} ke liye aapki walk-in request note kar li hai. Appointment arrange karne ke liye reception par wait kijiye.`
+  if (answers.purpose === 'Office tour') return 'Welcome! You can explore the office using the camera controls.'
+  if (answers.appointment === 'Yes, I have an appointment') return `Your ${answers.department} ${answers.purpose.toLowerCase()} request has been noted. Please wait at reception.`
+  return `Your ${answers.department} walk-in request has been noted. Please wait at reception to arrange an appointment.`
 }

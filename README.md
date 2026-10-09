@@ -58,3 +58,5 @@ Unit tests verify that the deployed GLB matches the original SHA-256, GLB header
 Browser tests default to installed Microsoft Edge. For another machine, change `channel: 'msedge'` in `playwright.config.js` to your installed browser, or remove `channel` and run `npx playwright install chromium`. For CI, install the matching browser before running tests. The browser uses its default graphics backend with software WebGL fallback enabled. Tests use Balanced mode for the interaction suite and mobile layout, since software rendering of the untouched large model is expensive.
 
 Reference documentation: [Tailwind with Vite](https://tailwindcss.com/docs/installation/using-vite), [Drei useGLTF](https://drei.docs.pmnd.rs/loaders/gltf-use-gltf), [Drei useAnimations](https://drei.docs.pmnd.rs/abstractions/use-animations).
+
+The four embedded white mannequin meshes are hidden in the viewer and replaced with detailed office characters at their measured world positions. The receptionist replacement is shared with the reception tour, avoiding duplicate staff. The source GLB and downloadable model remain unchanged.
