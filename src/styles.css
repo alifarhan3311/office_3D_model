@@ -42,3 +42,14 @@ h1{font-size:clamp(25px,2.1vw,34px);margin:7px 0 9px}
 @media(max-width:760px){.start-tour{top:108px;right:16px;padding:8px 10px;font-size:10px}.tour-dialog{right:12px;bottom:77px;padding:14px;width:290px;max-height:55%}.tour-dialog h3{font-size:14px}.tour-answers button{padding:8px;font-size:11px}}
 
 .tour-walk-controls { position:absolute; bottom:90px; right:20px; z-index:5; display:flex; gap:10px; align-items:center; padding:10px 14px; background:#fafbf6ee; border:1px solid #dbe2d0; border-radius:12px; font-size:12px; } .tour-walk-controls .tour-secondary { margin:0; } @media(max-width:700px) { .tour-walk-controls { right:12px; left:12px; bottom:90px; flex-wrap:wrap; } }
+
+.tour-speed { display:flex; align-items:center; gap:8px; font-size:12px; color:#59674c; margin:8px 0; } .tour-speed select { padding:6px 10px; border:1px solid #cbd5be; border-radius:8px; background:#f5f8ef; color:#34472a; cursor:pointer; } .tour-walk-controls .tour-speed { margin:0; }
+
+.walk-entry{position:absolute;right:24px;top:112px;z-index:5;background:#fffdf8;color:#526540;border:1px solid #d9e1ce;border-radius:8px;padding:10px 16px;font-size:12px;cursor:pointer}
+.walk-help{position:absolute;left:24px;top:112px;z-index:6;max-width:360px;background:#263029e8;color:white;border-radius:12px;padding:16px;display:grid;gap:6px;font-size:12px;box-shadow:0 8px 24px #0002}
+.walk-help strong{font-size:14px}.walk-help div{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.walk-help button{background:#f1f4e8;color:#35482e;border:0;border-radius:6px;padding:7px;cursor:pointer}
+.walk-crosshair{position:absolute;top:50%;left:50%;z-index:4;color:white;text-shadow:0 1px 3px #000;font-size:22px;pointer-events:none}
+.walk-map{position:absolute;left:24px;bottom:78px;width:150px;height:150px;border:5px solid #354333;border-radius:9px;z-index:5;background:#eef1e7}
+.walk-pad{position:absolute;right:24px;bottom:90px;z-index:6;display:grid;grid-template-columns:repeat(3,42px);gap:5px;touch-action:none}.walk-pad button{height:42px;background:#263029dd;color:#fff;border:1px solid #ffffff55;border-radius:8px;font-size:23px;touch-action:none;user-select:none}.walk-pad button:first-child{grid-column:2}.walk-pad button:nth-child(2){grid-column:1}
+.walking-view .gesture-hint,.walking-view .orientation{display:none}
+@media(max-width:700px){.walk-entry{right:14px;top:105px}.walk-help{left:12px;top:154px;max-width:calc(100% - 24px);padding:10px;font-size:10px}.walk-help strong{font-size:12px}.walk-map{left:12px;width:105px;height:105px;bottom:86px}.walk-pad{right:12px;bottom:86px}}

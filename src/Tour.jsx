@@ -4,9 +4,9 @@ import { Html } from '@react-three/drei'
 import Character from './HumanCharacter.jsx'
 import GuidedTour from './GuidedTour.jsx'
 import { Vector3, Quaternion, MathUtils } from 'three'
-import { VISITOR_PATH, VISITOR_SPEED, PATH_LENGTH, sampleVisitorPath, RECEPTIONIST_POSITION, TOUR_QUESTIONS, receptionResponse } from './tour'
+import { VISITOR_PATH, VISITOR_SPEED, PATH_LENGTH, sampleVisitorPath, RECEPTIONIST_POSITION, TOUR_QUESTIONS, TOUR_SPEEDS, receptionResponse } from './tour'
 
-export function TourActors({ info, stage, paused, onArrive, receptionState, onGuideStop, onGuideComplete }) {
+export function TourActors({ info, stage, paused, onArrive, receptionState, onGuideStop, onGuideComplete, speed = 1 }) {
   const visitor = useRef()
   const elapsed = useRef(0)
   const arrived = useRef(false)
@@ -16,7 +16,7 @@ export function TourActors({ info, stage, paused, onArrive, receptionState, onGu
   useEffect(() => { elapsed.current = 0; arrived.current = false; receptionState.current.standing = false; invalidate() }, [invalidate, receptionState])
   useFrame((_, delta) => {
     if (!visitor.current) return
-    const dt=Math.min(delta,.1)
+    const dt=Math.min(delta,.25)*speed
     if (stage === 'walking' && !paused) {
       const remaining=PATH_LENGTH-gait.current.distance
       const desiredSpeed=VISITOR_SPEED*Math.min(1, Math.max(.2,remaining/.8))
@@ -44,22 +44,27 @@ export function TourActors({ info, stage, paused, onArrive, receptionState, onGu
     }
     if (!paused) invalidate()
   })
-  if (stage === 'guiding' || stage === 'guided-complete') return <GuidedTour info={info} paused={paused} onStop={onGuideStop} onComplete={onGuideComplete}/>
+  if (stage === 'guiding' || stage === 'guided-complete') return <GuidedTour info={info} paused={paused} onStop={onGuideStop} onComplete={onGuideComplete} speed={speed}/>
   return <>
     <group ref={visitor} position={VISITOR_PATH[0].map((v,i)=>v-info.center[i])}><Character shirt="#365a79" moving={stage === 'walking' && !paused} gait={gait}/><Html center position={[0,1.95,0]} style={{pointerEvents:'none'}}><span className="character-label">Visitor</span></Html></group>
     <group position={RECEPTIONIST_POSITION.map((v,i)=>v-info.center[i])}><Html center position={[0,1.95,0]} style={{pointerEvents:'none'}}><span className="character-label">Receptionist</span></Html></group>
   </>
 }
 
-export function TourDialog({ stage, paused, question, answers, onAnswer, onClose, onRestart, onPause, guideStop }) {
+function TourSpeed({speed,onSpeed}) {
+  return <label className="tour-speed">Speed <select aria-label="Tour speed" value={speed} onChange={event=>onSpeed(Number(event.target.value))}>{TOUR_SPEEDS.map(value=><option key={value} value={value}>{value}×</option>)}</select></label>
+}
+
+export function TourDialog({ stage, paused, question, answers, onAnswer, onClose, onRestart, onPause, guideStop, speed = 1, onSpeed }) {
   if (stage === 'idle') return null
-  if (stage === 'walking') return <div className="tour-walk-controls"><span>Walking to reception</span><button className="tour-secondary" onClick={onPause}>{paused ? 'Resume walk' : 'Pause walk'}</button><button className="tour-secondary" onClick={onClose} aria-label="End reception tour">End tour</button></div>
-  if (stage === 'guiding' || stage === 'guided-complete') return <section className="tour-dialog" aria-label="Guided office tour" aria-live="polite"><div className="tour-dialog-heading"><span>GUIDED OFFICE TOUR</span><button onClick={onClose} aria-label="End reception tour">×</button></div><span className="question-progress">Stop {guideStop?.index ?? 0} / {guideStop?.total ?? 7}</span><h3>{stage === 'guided-complete' ? 'Office tour complete' : guideStop?.name}</h3><p>{guideStop?.description}</p>{stage === 'guiding' ? <button className="tour-secondary" onClick={onPause}>{paused ? 'Resume tour' : 'Pause tour'}</button> : <button className="tour-secondary" onClick={onRestart}>Restart reception tour</button>}</section>
+  if (stage === 'walking') return <div className="tour-walk-controls"><span>Walking to reception</span><TourSpeed speed={speed} onSpeed={onSpeed}/><button className="tour-secondary" onClick={onPause}>{paused ? 'Resume walk' : 'Pause walk'}</button><button className="tour-secondary" onClick={onClose} aria-label="End reception tour">End tour</button></div>
+  if (stage === 'guiding' || stage === 'guided-complete') return <section className="tour-dialog" aria-label="Guided office tour" aria-live="polite"><div className="tour-dialog-heading"><span>GUIDED OFFICE TOUR</span><button onClick={onClose} aria-label="End reception tour">×</button></div><span className="question-progress">Stop {guideStop?.index ?? 0} / {guideStop?.total ?? 7}</span><h3>{stage === 'guided-complete' ? 'Office tour complete' : guideStop?.name}</h3><p>{guideStop?.description}</p>{stage === 'guiding' && <TourSpeed speed={speed} onSpeed={onSpeed}/>}{stage === 'guiding' ? <button className="tour-secondary" onClick={onPause}>{paused ? 'Resume tour' : 'Pause tour'}</button> : <button className="tour-secondary" onClick={onRestart}>Restart reception tour</button>}</section>
   const current = TOUR_QUESTIONS[question]
   return <section className="tour-dialog" aria-label="Reception tour" aria-live="polite">
     <div className="tour-dialog-heading"><span>{stage === 'walking' ? 'GATE → RECEPTION' : 'RECEPTION DESK'}</span><button onClick={onClose} aria-label="End reception tour">×</button></div>
-    {stage === 'walking' ? <><h3>The visitor is approaching reception…</h3><p>The visitor will enter through the gate and stop at the reception desk.</p><button className="tour-secondary" onClick={onPause}>{paused ? 'Resume walk' : 'Pause walk'}</button></> : stage === 'complete' ? <><h3>Thank you! Welcome to our office.</h3><p>{receptionResponse(answers)}</p><dl>{TOUR_QUESTIONS.map(item=><div key={item.id}><dt>{item.id}</dt><dd>{answers[item.id]}</dd></div>)}</dl><small>This is an interactive demo. No actual booking is submitted.</small><button className="tour-secondary" onClick={onRestart}>Restart reception tour</button></> : <><span className="question-progress">Question {question + 1} / {TOUR_QUESTIONS.length}</span><h3>{current.text}</h3><div className="tour-answers">{current.options.map(option=><button key={option} onClick={()=>onAnswer(current.id,option)}>{option}</button>)}</div></>}
+    {stage === 'walking' ? <><h3>The visitor is approaching reception…</h3><p>The visitor will enter through the gate and stop at the reception desk.</p><button className="tour-secondary" onClick={onPause}>{paused ? 'Resume walk' : 'Pause walk'}</button></> : stage === 'complete' ? <><h3>Thank you! Welcome to our office.</h3><p>{receptionResponse(answers)}</p><dl>{TOUR_QUESTIONS.map(item=><div key={item.id}><dt>{item.id}</dt><dd>{answers[item.id]}</dd></div>)}</dl><small>This is an interactive demo. No actual booking is submitted.</small><button className="tour-secondary" onClick={onRestart}>Restart reception tour</button></> : <><TourSpeed speed={speed} onSpeed={onSpeed}/><span className="question-progress">Question {question + 1} / {TOUR_QUESTIONS.length}</span><h3>{current.text}</h3><div className="tour-answers">{current.options.map(option=><button key={option} onClick={()=>onAnswer(current.id,option)}>{option}</button>)}</div></>}
   </section>
 }
+
 
 

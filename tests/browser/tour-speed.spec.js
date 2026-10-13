@@ -1,0 +1,37 @@
+import {test,expect} from '@playwright/test'
+
+test('tour speed options change movement pace and preserve pause',async({page})=>{
+  const errors=[];page.on('pageerror',error=>errors.push(error.message))
+  await page.goto('/')
+  await expect(page.locator('.viewport')).toHaveAttribute('data-ready','true')
+  await page.getByLabel('Render quality').selectOption('balanced')
+  await page.getByRole('button',{name:'Start reception tour'}).click()
+  const speed=page.getByLabel('Tour speed')
+  await expect(speed).toHaveValue('1')
+  await expect(speed.locator('option')).toHaveText(['1×','1.25×','1.5×','2×'])
+  await speed.selectOption('2')
+  await expect(page.getByText('Welcome! What brings you here today?')).toBeVisible({timeout:20000})
+  await expect(speed).toHaveValue('2')
+  await page.getByRole('button',{name:'Office tour',exact:true}).click()
+  await page.getByRole('button',{name:'Pause tour',exact:true}).click()
+  const canvas=page.locator('canvas')
+  const distance=async()=>Number(await canvas.getAttribute('data-guided-tour-distance'))
+  const before=await distance()
+  for(const value of ['1.25','1.5','1']){await speed.selectOption(value);await expect(speed).toHaveValue(value)}
+  await page.waitForTimeout(350)
+  expect(await distance()).toBeCloseTo(before,3)
+  await page.getByRole('button',{name:'Resume tour',exact:true}).click()
+  await page.waitForTimeout(1000)
+  await page.getByRole('button',{name:'Pause tour',exact:true}).click()
+  const afterNormal=await distance(),normal=afterNormal-before
+  await speed.selectOption('2')
+  await page.getByRole('button',{name:'Resume tour',exact:true}).click()
+  await page.waitForTimeout(1000)
+  await page.getByRole('button',{name:'Pause tour',exact:true}).click()
+  const fast=(await distance())-afterNormal
+  expect(normal).toBeGreaterThan(.6)
+  expect(fast/normal).toBeGreaterThan(1.5)
+  expect(fast/normal).toBeLessThan(2.6)
+  await page.getByRole('button',{name:'End reception tour'}).click()
+  expect(errors).toEqual([])
+})

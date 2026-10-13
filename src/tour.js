@@ -6,6 +6,7 @@ export const VISITOR_PATH = [
   [-22.65, 0.12, 2.25],
 ]
 export const VISITOR_SPEED = 1.05
+export const TOUR_SPEEDS = [1, 1.25, 1.5, 2]
 export const PATH_LENGTH = VISITOR_PATH.slice(1).reduce((total, point, index) => total + Math.hypot(point[0]-VISITOR_PATH[index][0],point[2]-VISITOR_PATH[index][2]), 0)
 export function sampleVisitorPath(distance) {
   let remaining = Math.max(0, distance)

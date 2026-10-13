@@ -9,6 +9,8 @@ import HumanCharacter from './HumanCharacter.jsx'
 import { buildOfficeTour, RECEPTION_EXIT_X } from './officeTour'
 import { enhanceInteriorMaterials } from './interiorMaterials'
 import Washrooms from './Washrooms.jsx'
+import ArchitecturalDetails from './ArchitecturalDetails.jsx'
+import { WalkthroughRig } from './Walkthrough.jsx'
 
 export const PERSON_MESH_NAMES = ['Object_2', 'Object_2001', 'Object_2002', 'Object_2004']
 
@@ -69,7 +71,7 @@ function Office({ onReady, onClips, animation, playing, shadows, receptionState,
     return () => { action.fadeOut(0.2); action.stop() }
   }, [actions, animation])
   useEffect(() => { if (actions[animation]) actions[animation].paused = !playing }, [actions, animation, playing])
-  return <group position={info.center.map(value => -value)}><primitive object={scene} dispose={null}/>{people.map((person,index)=><group key={person.name} visible={index !== 1 || !['guiding','guided-complete'].includes(tourStage)} position={person.position} rotation={[0,person.heading,0]}><HumanCharacter shirt={person.shirt} receptionist={index === 1} receptionState={index === 1 ? receptionState : undefined} phase={index}/></group>)}</group>
+  return <><group position={info.center.map(value => -value)}><primitive object={scene} dispose={null}/>{people.map((person,index)=><group key={person.name} visible={index !== 1 || !['guiding','guided-complete'].includes(tourStage)} position={person.position} rotation={[0,person.heading,0]}><HumanCharacter shirt={person.shirt} receptionist={index === 1} receptionState={index === 1 ? receptionState : undefined} phase={index}/></group>)}</group><ArchitecturalDetails scene={scene} center={info.center}/></>
 }
 
 function CameraRig({ info, command, autoRotate, view, onCamera }) {
@@ -80,8 +82,8 @@ function CameraRig({ info, command, autoRotate, view, onCamera }) {
   const move = (direction, factor = 1) => {
     if (!info || !controls.current) return
     const distance = fitBoxDistance(info.size, direction, camera.fov, size.width / size.height) * factor
-    camera.near = Math.max(info.radius / 100, 0.05)
-    camera.far = info.radius * 30
+    camera.near = Math.max(info.radius / 60, 0.05)
+    camera.far = info.radius * 16
     camera.updateProjectionMatrix()
     // Flush residual orbit damping before a programmatic camera transition.
     controls.current.enableDamping = false
@@ -185,7 +187,7 @@ export default function Viewer(props) {
   if (props.tourStage === 'idle') receptionState.current.standing = false
   const [dpr] = useState(() => Math.min(window.devicePixelRatio || 1, 2))
   const shadows = props.quality === 'high'
-  return <Canvas frameloop="demand" shadows={shadows ? PCFSoftShadowMap : false} dpr={props.quality === 'high' ? dpr : 1} camera={{ position: [30, 30, 40], fov: 42, near: 0.15, far: 600 }} gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: ACESFilmicToneMapping }} fallback={<WebGLFallback onFailure={props.onFailure}/>} onCreated={({ gl }) => { gl.localClippingEnabled = true; gl.setClearColor('#eceee8'); gl.toneMappingExposure = 0.9 }}>
+  return <Canvas frameloop={props.walkthrough ? "always" : "demand"} shadows={shadows ? PCFSoftShadowMap : false} dpr={props.quality === 'high' ? dpr : 1} camera={{ position: [30, 30, 40], fov: 42, near: 0.15, far: 600 }} gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: ACESFilmicToneMapping }} fallback={<WebGLFallback onFailure={props.onFailure}/>} onCreated={({ gl }) => { gl.localClippingEnabled = true; gl.setClearColor('#eceee8'); gl.toneMappingExposure = 0.9 }}>
     <ambientLight intensity={0.25}/>
     <hemisphereLight args={['#ffffff', '#b6bda8', 0.7]}/>
     <directionalLight position={[15, 28, 12]} intensity={1.8} castShadow={shadows} shadow-mapSize={[2048, 2048]} shadow-camera-left={-22} shadow-camera-right={22} shadow-camera-top={22} shadow-camera-bottom={-22} shadow-camera-near={1} shadow-camera-far={65} shadow-bias={-0.00015} shadow-normalBias={0.025}/>
@@ -200,12 +202,13 @@ export default function Viewer(props) {
     </Suspense>
     {props.info && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -props.info.size[1] / 2 - 0.035, 0]} receiveShadow><planeGeometry args={[160, 160]}/><shadowMaterial transparent opacity={0.16}/></mesh>}
     {props.grid && props.info && <gridHelper args={[80, 40, '#c2c9bd', '#dce0d6']} position={[0, -props.info.size[1] / 2 - 0.05, 0]}/>}
-    <CameraRig {...props}/>
+    {props.walkthrough && props.info ? <WalkthroughRig info={props.info} input={props.walkInput} onStatus={props.onWalkStatus}/> : <CameraRig {...props}/>}
     <RenderSettings exposure={props.exposure}/>
     <Screenshot command={props.command}/>
-    {props.info && props.tourStage !== 'idle' && <TourActors key={props.tourRun} info={props.info} stage={props.tourStage} paused={props.tourPaused} onArrive={props.onTourArrive} receptionState={receptionState} onGuideStop={props.onGuideStop} onGuideComplete={props.onGuideComplete}/>}
+    {props.info && props.tourStage !== 'idle' && <TourActors key={props.tourRun} info={props.info} stage={props.tourStage} speed={props.tourSpeed} paused={props.tourPaused} onArrive={props.onTourArrive} receptionState={receptionState} onGuideStop={props.onGuideStop} onGuideComplete={props.onGuideComplete}/>}
     <AnimationFrames active={Boolean(props.animation) && props.playing}/>
     <ContextGuard onFailure={props.onFailure}/>
   </Canvas>
 }
+
 

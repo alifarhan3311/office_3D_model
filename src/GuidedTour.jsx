@@ -5,7 +5,7 @@ import { Quaternion, Vector3 } from 'three'
 import Character from './HumanCharacter.jsx'
 import { routeLength, sampleRoute } from './officeTour'
 
-export default function GuidedTour({info,paused,onStop,onComplete}) {
+export default function GuidedTour({info,paused,onStop,onComplete,speed = 1}) {
   const guide=useRef(), visitor=useRef()
   const state=useRef({segment:-1,distance:0,wait:0,done:false})
   const guideGait=useRef({distance:0,speed:0}),visitorGait=useRef({distance:0,speed:0})
@@ -29,7 +29,7 @@ export default function GuidedTour({info,paused,onStop,onComplete}) {
     standing.current.paused=paused
     guideGait.current.speed=visitorGait.current.speed=0
     if(!paused&&!s.done) {
-      const dt=Math.min(delta,.25)
+      const dt=Math.min(delta,.25)*speed
       const returning=s.segment===data.stops.length
       const path=s.segment<0?data.departure:returning?data.staffReturn:data.stops[s.segment].path
       const length=routeLength(path)
@@ -44,7 +44,7 @@ export default function GuidedTour({info,paused,onStop,onComplete}) {
           const sample=sampleRoute(route,distance)
           ref.current.position.set(...sample.position).sub(center)
           ref.current.quaternion.slerp(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),sample.heading),1-Math.exp(-8*dt))
-          gait.current.speed=1.05;gait.current.distance+=dt*1.05
+          gait.current.speed=1.05*speed;gait.current.distance+=dt*1.05
         }
         setPose(guide,guideGait,s.distance)
         if(s.segment>=0&&!returning)setPose(visitor,visitorGait,Math.max(0,lengths.slice(0,s.segment).reduce((a,b)=>a+b,0)+s.distance-.9),walkPath)
@@ -66,6 +66,7 @@ export default function GuidedTour({info,paused,onStop,onComplete}) {
     }
     gl.domElement.dataset.guidedTourStop=String(s.segment)
     gl.domElement.dataset.guidedTourState=s.done?'complete':paused?'paused':'walking'
+    gl.domElement.dataset.guidedTourDistance=String(guideGait.current.distance)
     gl.domElement.dataset.visitorWorldPosition=visitor.current.position.clone().add(center).toArray().join(',')
   })
   return <>

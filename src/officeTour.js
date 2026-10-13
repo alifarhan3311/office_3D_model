@@ -120,7 +120,7 @@ export function buildOfficeTour(scene, debug = false) {
     const path=pathTo(from,target);from=target
     return {...stop,path}
   })
-  return {stops, staffReturn:pathTo(returnPoint,start), start:world(start), departure, meeting:world(meeting), ...(debug ? {grid:{width,depth,blocked:Array.from(blocked),connected:Array.from(connected),min:bounds.min.toArray()}} : {})}
+  return {stops, navigation:{width,depth,cell:CELL,blocked,connected,min:bounds.min.toArray(),spawn:world(nearest(VISITOR_PATH[2],connected))}, staffReturn:pathTo(returnPoint,start), start:world(start), departure, meeting:world(meeting), ...(debug ? {grid:{width,depth,blocked:Array.from(blocked),connected:Array.from(connected),min:bounds.min.toArray()}} : {})}
 }
 
 export function routeLength(path) { return path.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-path[i][0],p[2]-path[i][2]),0) }

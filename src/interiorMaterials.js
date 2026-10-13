@@ -20,6 +20,8 @@ export function enhanceInteriorMaterials(scene) {
   scene.updateMatrixWorld(true)
   const surfaces={plaster:grainTexture('plaster'),fabric:grainTexture('fabric'),wood:grainTexture('wood')}
   const materials=new Map()
+  const frameLayers=new Map()
+  let frameIndex=0
   scene.traverse(object=>{
     if(!object.isMesh)return
     const enhance=source=>{
@@ -31,6 +33,10 @@ export function enhanceInteriorMaterials(scene) {
         if(!material.bumpMap){material.bumpMap=surfaces.plaster;material.bumpScale=.008}
       } else if(name==='glass'||name==='basic_glass') {
         material.roughness=.09;material.metalness=0;material.transparent=true;material.opacity=.18;material.depthWrite=false
+        material.depthTest=true;material.polygonOffset=true;material.polygonOffsetFactor=1;material.polygonOffsetUnits=2
+      } else if(name==='frame') {
+        material.metalness=.5;material.roughness=.6;material.envMapIntensity=.35
+        material.transparent=false;material.opacity=1;material.depthWrite=true;material.depthTest=true
       } else if(/carpet|fabric|cloth|upholstery/.test(name)) {
         material.roughness=.92;material.metalness=0
         if(!material.bumpMap){material.bumpMap=surfaces.fabric;material.bumpScale=.012}
@@ -41,6 +47,13 @@ export function enhanceInteriorMaterials(scene) {
       materials.set(source,material);return material
     }
     object.material=Array.isArray(object.material)?object.material.map(enhance):enhance(object.material)
+    // Imported frame rails meet on coplanar faces. Give adjacent rails a small,
+    // deterministic depth separation without moving their physical geometry.
+    if(!Array.isArray(object.material)&&object.material.name==='Frame') {
+      const layer=frameIndex++%4
+      if(!frameLayers.has(layer)){const material=object.material.clone();material.polygonOffset=true;material.polygonOffsetFactor=-1;material.polygonOffsetUnits=-(layer+1);frameLayers.set(layer,material)}
+      object.material=frameLayers.get(layer);object.renderOrder=layer+1
+    }
     const objectMaterials=Array.isArray(object.material)?object.material:[object.material]
     if(!object.geometry.attributes.uv && objectMaterials.some(material=>material.bumpMap)) {
       object.geometry=object.geometry.clone()
